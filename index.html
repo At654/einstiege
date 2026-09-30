@@ -188,8 +188,8 @@ h1,h2,h3{font-family:var(--display);font-stretch:112%;margin:0;text-wrap:balance
   <div class="reasons" id="bReasons" hidden></div>
 
   <div class="controls">
-    <button class="btn" id="bPrev" aria-label="Vorherige Ware">◀ Zurück</button>
-    <button class="btn primary" id="bNext" aria-label="Nächste Ware">Nächste Ware ▶</button>
+    <button class="btn" id="bPrev" aria-label="Zurück">◀ Zurück</button>
+    <button class="btn primary" id="bNext" aria-label="Weiter">Weiter ▶</button>
     <button class="btn" id="bOpen">Abstimmung schließen</button>
     <span class="grow"></span>
     <button class="btn" id="bLiveToggle" title="Aus: Ergebnis erst nach Klick auf Aufdecken sichtbar">Live-Ergebnis: an</button>
@@ -227,6 +227,7 @@ h1,h2,h3{font-family:var(--display);font-stretch:112%;margin:0;text-wrap:balance
         <select id="sPreset"></select>
       </label>
       <label>Titel an der Tafel<input id="sTitle" maxlength="80"></label>
+      <div class="row" style="align-items:end"><label style="flex:1;min-width:10em">Wort für eine Karte<input id="sNoun" maxlength="20" placeholder="Ware"></label><label style="flex:3;min-width:14em">Frage auf dem Handy<input id="sQ" maxlength="120" placeholder="Wie würdest du diese Ware verkaufen? Tippe auf eine Ecke."></label></div>
       <div style="display:grid;gap:8px">
         <b>Ecken (2 bis 4). Schildtext sehen alle sofort, der Fachbegriff erscheint erst beim Aufhängen.</b>
         <div id="sCats" style="display:grid;gap:8px"></div>
@@ -1619,7 +1620,19 @@ const PRESETS=[
          {sign:"Ich nehme die Ware selbst und gehe zur Kasse.",term:"Selbstbedienung"}],
    items:[{name:"Goldring",exp:0},{name:"Milch",exp:2},{name:"Winterjacke",exp:1},{name:"Käse von der Theke",exp:0},
           {name:"Zahnpasta",exp:2},{name:"Laufschuhe",exp:1},{name:"Smartphone",exp:0},{name:"Nudeln",exp:2},
-          {name:"Sofa",exp:1},{name:"Pflanzenschutzmittel",exp:0},{name:"Batterien",exp:2},{name:"Bohrmaschine",exp:1}]}
+          {name:"Sofa",exp:1},{name:"Pflanzenschutzmittel",exp:0},{name:"Batterien",exp:2},{name:"Bohrmaschine",exp:1}]},
+  {id:"lf1m11",title:"LF 1 · Modul 11 – Was will mein Betrieb?",noun:"Zielkarte",q:"Um was geht es bei diesem Ziel? Tippe auf eine Ecke.",
+   cats:[{sign:"€ – Es geht ums Geld.",term:"ökonomisch"},
+         {sign:"Mensch – Es geht um die Menschen im Betrieb.",term:"sozial"},
+         {sign:"Blatt – Es geht um die Umwelt.",term:"ökologisch"}],
+   items:[{name:"Der Umsatz soll im nächsten Jahr um 5 % steigen.",exp:0},
+          {name:"Alle Mitarbeiter bekommen ein Jobticket.",exp:1},
+          {name:"Die Kühltruhen bekommen Glasdeckel, um Strom zu sparen.",exp:null},
+          {name:"Der Betrieb richtet einen Kindergarten für Beschäftigte ein.",exp:1},
+          {name:"Im Getränkemarkt gibt es nur noch Mehrwegflaschen.",exp:2},
+          {name:"Die Personalkosten sollen sinken.",exp:0},
+          {name:"Die Azubis bekommen eine Prämie für gute Prüfungen.",exp:1},
+          {name:"Plastiktüten werden aus dem Sortiment genommen.",exp:2}]}
 ];
 function validCfg(c){
   if(!c||typeof c!=="object"||!Array.isArray(c.cats)||!Array.isArray(c.items))return null;
@@ -1627,7 +1640,7 @@ function validCfg(c){
   if(cats.length<2)return null;
   const items=c.items.slice(0,60).map(x=>({name:clean(x&&x.name,80),exp:(Number.isInteger(x&&x.exp)&&x.exp>=0&&x.exp<cats.length)?x.exp:null})).filter(x=>x.name);
   if(!items.length)return null;
-  return {title:clean(c.title,80)||"Zuordnen",cats,items};
+  return {title:clean(c.title,80)||"Zuordnen",noun:clean(c.noun,20)||"Ware",q:clean(c.q,120)||"Wie würdest du diese Ware verkaufen? Tippe auf eine Ecke.",cats,items};
 }
 
 /* =========================================================
@@ -1708,8 +1721,8 @@ function startBoard(){
   function render(){
     const cfg=S.cfg, i=S.cur, item=cfg.items[i], {c,n}=counts(i), vis=isVisible(i);
     $("bTitle").textContent=cfg.title;document.title=cfg.title;
-    $("bNr").textContent="Ware "+(i+1)+" von "+cfg.items.length;
-    $("bItem").textContent=item.name;
+    $("bNr").textContent=cfg.noun+" "+(i+1)+" von "+cfg.items.length;
+    $("bItem").textContent=item.name;$("bItem").style.fontSize=item.name.length>30?".62em":"";
     renderPeople();$("bCount").textContent=n+" von "+Math.max(n,peers.size)+" Handys haben gewählt"+(S.open?"":" · Abstimmung geschlossen");
     const cw=$("bCorners");cw.style.setProperty("--n",cfg.cats.length);
     const key=S.rid+"/"+i;
@@ -1804,7 +1817,7 @@ function startBoard(){
     own().forEach((p,k)=>{const o=el("option","","Eigene: "+p.title);o.value="own"+k;sel.append(o);});
     const o=el("option","","– aktueller Stand –");o.value="cur";sel.append(o);sel.value="cur";}
   function fillForm(cfg){
-    $("sTitle").value=cfg.title;
+    $("sTitle").value=cfg.title;$("sNoun").value=cfg.noun;$("sQ").value=cfg.q;
     const box=$("sCats");box.innerHTML="";
     for(let k=0;k<4;k++){const cat=cfg.cats[k]||{sign:"",term:""};
       const r=el("div","catrow k"+(k+1));r.append(el("b","","Ecke "+(k+1)));
@@ -1816,7 +1829,7 @@ function startBoard(){
   function readForm(){
     const cats=[];for(let k=0;k<4;k++){const s=$("sSign"+k).value.trim();if(s)cats.push({sign:s,term:$("sTerm"+k).value.trim()});}
     const items=$("sItems").value.split("\n").map(l=>l.trim()).filter(Boolean).map(l=>{const m=l.match(/^(.*?)(?:\s*;\s*(\d))?\s*$/);return {name:m[1].trim(),exp:m[2]?Number(m[2])-1:null};});
-    return validCfg({title:$("sTitle").value,cats,items});
+    return validCfg({title:$("sTitle").value,noun:$("sNoun").value,q:$("sQ").value,cats,items});
   }
   $("bSetupBtn").onclick=()=>{presetList();fillForm(S.cfg);$("sUrl").value=S.url||"";$("setup").hidden=false;};
   $("sClose").onclick=()=>{$("setup").hidden=true;};
@@ -1898,14 +1911,14 @@ function startStudent(code){
     $("stWait").hidden=true;$("stPlay").hidden=false;
     const cfg=st.cfg,i=st.cur,item=cfg.items[i],my=mine.v[i];
     $("stTitle").textContent=cfg.title;document.title=cfg.title;
-    $("stNr").textContent="Ware "+(i+1)+" von "+cfg.items.length;$("stItem").textContent=item.name;
+    $("stNr").textContent=cfg.noun+" "+(i+1)+" von "+cfg.items.length;$("stItem").textContent=item.name;
     const box=$("stChoices");const key=st.rid+"/"+i+"/"+st.terms;
     if(drawnKey!==key){drawnKey=key;box.innerHTML="";$("stStatus").textContent="";
       cfg.cats.forEach((cat,k)=>{const b=el("button","choice k"+(k+1));b.type="button";b.dataset.k=k;
         const t=el("span","t");if(st.terms&&cat.term)t.append(el("small","",cat.term));t.append(document.createTextNode(cat.sign));
         b.append(el("span","num",k+1),t);b.onclick=()=>vote(k);box.append(b);});}
     [...box.children].forEach((b,k)=>{b.classList.toggle("sel",!!my&&my.c===k);b.disabled=!st.open;b.setAttribute("aria-pressed",!!my&&my.c===k);});
-    $("stQ").textContent=st.open?"Wie würdest du diese Ware verkaufen? Tippe auf eine Ecke.":"Abstimmung geschlossen – schau zur Tafel.";
+    $("stQ").textContent=st.open?cfg.q:"Abstimmung geschlossen – schau zur Tafel.";
     $("stWhy").hidden=!(my&&st.open);
     if(my&&!$("stWhyIn").value&&my.r)$("stWhyIn").value=my.r;
   }
